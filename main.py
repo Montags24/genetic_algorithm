@@ -85,7 +85,7 @@ def calculate_fitness(lives):
 if __name__ == "__main__":
     np.random.seed(seed=0)
     cities = []
-    lives = []
+    lives = []  # fewfwfwfwefwefwf
 
     # Generate random city coordinates
     for _ in range(NO_OF_CITIES):
