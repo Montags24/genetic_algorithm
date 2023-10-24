@@ -1,51 +1,70 @@
 import numpy as np
 import cv2
 import random
-import operator
 import imageio
 import os
+import math
+import threading
+import time
 
 NO_OF_CITIES = 70
-NO_OF_LIVES = 1000
+NO_OF_LIVES = 2000
 MAX_GENERATIONS = 200
-MUTATION_RATE = 0.1
+MUTATION_RATE = 0.075
+MUTATION_SWAPS = 10
 
 
-def create_cities_img(life, size=600):
+def create_cities_img(life, generation_no, human_injection, size=1200):
     # Get the route from the life dictionary
     cities = life["route"]
 
     # Create a blank image with a white background
-    img = np.zeros((size, size, 3), dtype=np.uint8) + 255
+    bar_height = 20
+    img_bar = np.zeros((size + bar_height, size, 3), dtype=np.uint8) + 255
+    bar = img_bar[size:, :]
+    img = img_bar[:size, :]
 
-    # Draw lines connecting cities and mark them as circles
-    for index, city in enumerate(cities):
-        x = int(city["x"] * size)
-        y = int(city["y"] * size)
-        previous_city = cities[index - 1]
-        previous_x = int(previous_city["x"] * size)
-        previous_y = int(previous_city["y"] * size)
-        line_colour = (0, 0, 255)  # Red lines
-        cv2.line(img, (x, y), (previous_x, previous_y), line_colour, thickness=2)
+    # Function to draw a circle for a city
+    def draw_city_circle(x, y, is_starting_city=False):
+        radius = 8 if is_starting_city else 5
+        color = (0, 255, 0) if is_starting_city else (255, 0, 0)
+        thickness = -1
+        cv2.circle(img, (x, y), radius, color, thickness)
+
+    # Function to draw a line connecting cities
+    def draw_city_line(city1, city2):
+        x1, y1 = int(city1["x"] * size), int(city1["y"] * size)
+        x2, y2 = int(city2["x"] * size), int(city2["y"] * size)
+        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)  # Red lines
+
+    if not human_injection:
+        # Draw lines connecting cities and mark them as circles
+        for i in range(len(cities)):
+            draw_city_line(cities[i], cities[(i + 1) % len(cities)])
 
     for index, city in enumerate(cities):
         # Draw circles to represent cities
-        x = int(city["x"] * size)
-        y = int(city["y"] * size)
-        img[y][x] = 0
-        center_coordinates = (x, y)
-        radius = 5
-        color = (255, 0, 0)  # Blue circles (b, g, r)
-        thickness = -1
-        if index == 0:
-            radius = 8
-            color = (0, 255, 0)  # Green circle for the starting city
-        cv2.circle(img, center_coordinates, radius, color, thickness)
+        x, y = int(city["x"] * size), int(city["y"] * size)
+        draw_city_circle(x, y, is_starting_city=(index == 0))
 
-        # Display the distance on the image
-        text = f"Distance: {round(life['distance'], 2)}"
+        if human_injection:
+            # Display the index of the city
+            cv2.putText(
+                img,
+                str(index),
+                (x - 5, y - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 0),
+                1,
+                cv2.LINE_AA,
+            )
+
+    if not human_injection:
+        # Display the distance and generation number
+        text = f"Distance: {round(life['distance'], 2)} Gen: {generation_no}"
         font = cv2.FONT_HERSHEY_SIMPLEX
-        org = (330, 50)  # Coordinates from bottom left of text
+        org = (175, 50)
         fontScale = 1
         color = (0, 0, 0)
         thickness = 1
@@ -53,7 +72,17 @@ def create_cities_img(life, size=600):
             img, text, org, font, fontScale, color, thickness, cv2.LINE_AA, False
         )
 
-    return img
+        # Set the bar color based on the survival mechanism
+        color = {
+            "procreation": (0, 255, 0),
+            "fittest": (255, 0, 0),
+            "mutation": (0, 0, 255),
+        }.get(
+            life["survival_mechanism"], (0, 0, 0)
+        )  # Default to black
+        bar[:] = color
+
+    return img_bar
 
 
 def create_new_route(cities):
@@ -96,130 +125,241 @@ def select_mating_pool(lives):
     for life in lives:
         danger = random.uniform(0, 1)
         if life["fitness"] > danger:
+            life["survival_mechanism"] = "fittest"
             selected_routes.append(life)
 
     return selected_routes
-
-
-# def crossover(lives):
-#     crossover_routes = []
-#     for _ in range(len(lives)):
-#         new_life = {}
-#         new_route = []
-#         route_1 = random.choice(lives)["route"]
-#         route_2 = random.choice(lives)["route"]
-#         for i in range(len(route_1)):
-#             if i == 0:
-#                 new_route.append(route_1[i])
-#             else:
-#                 randint = random.randint(0, 1)
-#                 if randint == 0:
-#                     for city in route_1:
-#                         if city not in new_route:
-#                             new_route.append(city)
-#                             break
-#                 else:
-#                     for city in route_2:
-#                         if city not in new_route:
-#                             new_route.append(city)
-#                             break
-#         new_life["route"] = new_route
-#         new_life["distance"] = calculate_distance(new_route)
-#         crossover_routes.append(new_life)
-#     return crossover_routes
 
 
 def crossover(lives):
     crossover_routes = []
 
     for _ in range(len(lives)):
-        parent1 = random.choice(lives)
-        parent2 = random.choice(lives)
+        father = random.choice(lives)
+        mother = random.choice(lives)
 
-        # Choose two random crossover points
-        idx1, idx2 = random.sample(range(len(parent1["route"])), 2)
-        start_idx, end_idx = min(idx1, idx2), max(idx1, idx2)
+        if father["fitness"] > mother["fitness"]:
+            father, mother = mother, father
 
-        # Create a copy of the parent 1 route and fill the gap with cities from parent 2
-        child_route = [None] * len(parent1["route"])
-        child_route[start_idx : end_idx + 1] = parent1["route"][start_idx : end_idx + 1]
+        father_percentage_to_inject = father["fitness"] / (
+            father["fitness"] + mother["fitness"]
+        )
 
-        parent2_iter = (city for city in parent2["route"] if city not in child_route)
+        father_no_cities_to_inject = math.floor(
+            (father_percentage_to_inject * NO_OF_CITIES) / 2
+        )
 
-        for i in range(len(child_route)):
-            if child_route[i] is None:
-                child_route[i] = next(parent2_iter)
+        father_city_pairs_to_inject = []
+        for _ in range(father_no_cities_to_inject):
+            while True:
+                rand_point_along_route = random.randint(1, len(father["route"]) - 2)
+                if rand_point_along_route % 2 == 0:
+                    rand_point_along_route -= 1
+                father_city_pair = father["route"][
+                    rand_point_along_route : rand_point_along_route + 2
+                ]
 
-        new_life = {"route": child_route, "distance": calculate_distance(child_route)}
+                if father_city_pair not in father_city_pairs_to_inject:
+                    father_city_pairs_to_inject.append(father_city_pair)
+                    break
+
+        child_route = []
+
+        is_not_in_father = True
+
+        for mother_city in mother["route"]:
+            for father_city_pair in father_city_pairs_to_inject:
+                if mother_city == father_city_pair[0]:
+                    is_not_in_father = False
+                    child_route += father_city_pair
+                    break
+                elif mother_city == father_city_pair[1]:
+                    is_not_in_father = False
+                    break
+            if is_not_in_father:
+                child_route.append(mother_city)
+
+            is_not_in_father = True
+
+        new_life = {
+            "route": child_route,
+            "distance": calculate_distance(child_route),
+            "survival_mechanism": "procreation",
+        }
         crossover_routes.append(new_life)
 
     return crossover_routes
 
 
+def select_route_manually(cities):
+    human_life = {"route": cities}
+
+    # Create a blank route image for manual selection
+    blank_route = create_cities_img(human_life, generation_no=0, human_injection=True)
+
+    # Save the image for the current generation
+    cv2.imwrite("blank_route.png", blank_route)
+
+    # Generate a hash table of index to city numbers
+    index_to_city = {i: city for i, city in enumerate(human_life["route"])}
+
+    # Specify the route by city indices
+    route_indices = [
+        0,
+        22,
+        18,
+        1,
+        25,
+        28,
+        31,
+        21,
+        37,
+        33,
+        34,
+        26,
+        4,
+        35,
+        5,
+        36,
+        19,
+        10,
+        9,
+        6,
+        3,
+        11,
+        15,
+        13,
+        8,
+        17,
+        12,
+        2,
+        16,
+        20,
+        24,
+        32,
+        7,
+        30,
+        23,
+        27,
+        38,
+        39,
+        29,
+        14,
+    ]
+
+    # Convert route indices to city coordinates
+    selected_route = [index_to_city[int(index)] for index in route_indices]
+
+    return selected_route
+
+
 def mutation(lives, MUTATION_RATE):
-    best_life = min(lives, key=lambda x: x["distance"])
+    mutated_children = []
 
     for life in lives:
-        if random.random() < mutation_rate:
+        if random.random() < MUTATION_RATE:
             # Perform a random swap mutation
-            randint_1 = random.randint(0, len(life["route"]) - 1)
-            randint_2 = random.randint(0, len(life["route"]) - 1)
-            temp_route = life["route"][randint_1]
-            life["route"][randint_1] = life["route"][randint_2]
-            life["route"][randint_2] = temp_route
-            life["distance"] = calculate_distance(life["route"])
+            for _ in range(MUTATION_SWAPS):
+                randint_1 = random.randint(1, len(life["route"]) - 1)
+                randint_2 = random.randint(1, len(life["route"]) - 1)
+                life["route"][randint_1], life["route"][randint_2] = (
+                    life["route"][randint_2],
+                    life["route"][randint_1],
+                )
 
-            # Preserve the best solution found so far
-            if life["distance"] > best_life["distance"]:
-                life["route"] = best_life["route"]
-                life["distance"] = best_life["distance"]
+                life["distance"] = calculate_distance(life["route"])
+                life["survival_mechanism"] = "mutation"
+                mutated_children.append(life)
 
-    return lives
+    return mutated_children
 
 
 if __name__ == "__main__":
     np.random.seed(seed=0)
     cities = []
-    lives = []
-
     # Generate random city coordinates
     for _ in range(NO_OF_CITIES):
         cities.append(dict(x=np.random.rand(), y=np.random.rand()))
 
+    # # Exploration of human injection
+    # human_life_to_inject = dict(
+    #     route=select_route_manually(cities), fitness=0, survival_mechanism="procreation"
+    # )
+    # human_life_to_inject["distance"] = calculate_distance(human_life_to_inject["route"])
+
+    # human_route_img = create_cities_img(
+    #     human_life_to_inject, generation_no=0, human_injection=False
+    # )
+    # # Save the image for the current generation
+    # cv2.imwrite(f"Human route.png", human_route_img)
+
+    lives = []
+    # lives.append(human_life_to_inject)
+
     # Generate random routes and calculate distances
-    for _ in range(NO_OF_LIVES):
-        life = dict(route=create_new_route(cities), fitness=0)
+    maximum_concurrent_threads = 20
+
+    def threaded_create_and_calculate(
+        lives, fitness=0, survival_mechanism="procreation"
+    ):
+        life = dict(
+            route=create_new_route(cities), fitness=0, survival_mechanism="procreation"
+        )
         distance = calculate_distance(life["route"])
         life["distance"] = distance
         lives.append(life)
 
-    sorted_data = sorted(lives, key=lambda x: x["distance"])
+        return
 
+    threads = []
+    time_started = time.time()
+    for _ in range(NO_OF_LIVES):
+        threaded_function = threaded_create_and_calculate
+        kwargs = dict(fitness=0, survival_mechanism="procreation")
+        args = [lives]
+        thread = threading.Thread(target=threaded_function, args=args, kwargs=kwargs)
+        threads.append(thread)
+        thread.start()
+        # Pause until active thread count is okay
+        while threading.active_count() > maximum_concurrent_threads:
+            time.sleep(0.01)
+
+    while len(lives) < NO_OF_LIVES:
+        time.sleep(0.01)
+    time_finished = time.time()
+    time_taken = time_finished - time_started
+    1 / 0
+
+    lives = sorted(lives, key=lambda x: x["distance"])
     # Create a list to store images for each generation
     generation_images = []
 
     for generation in range(MAX_GENERATIONS):
-        print(f"---Generation Number {generation}---")
+        print(f"-----Generation Number {generation}-----")
 
         calculate_fitness(lives)
 
         survivors = select_mating_pool(lives)
+        survivors = survivors[0 : int(NO_OF_LIVES / 3)]
 
         children = crossover(survivors)
 
-        mutations = mutation(children)
+        mutations = mutation(children, MUTATION_RATE)
 
-        lives = survivors + mutations
+        lives = survivors + children + mutations
 
         lives = sorted(lives, key=lambda x: x["distance"])
         print(f"number of survivors: {len(survivors)}")
+        print(f"number of children: {len(children)}")
         print(f"number of mutations: {len(mutations)}")
 
         min_distance_dict = min(lives, key=lambda x: x["distance"])
         print(f"Minimum distance between cities is {min_distance_dict['distance']}")
 
-        sorted_data = sorted(lives, key=lambda x: x["distance"])
-        img_shortest_after_algo = create_cities_img(sorted_data[0])
+        # sorted_data = sorted(lives, key=lambda x: x["distance"])
+        img_shortest_after_algo = create_cities_img(
+            lives[0], generation_no=generation, human_injection=False
+        )
 
         # Append the current generation's image to the list
         generation_images.append(img_shortest_after_algo)

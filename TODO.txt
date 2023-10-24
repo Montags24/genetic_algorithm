@@ -1,0 +1,7 @@
+- change procreation so that it takes two life objects as input - complete
+
+- add selection to population method, user then specifies survivor rate and selection method - complete
+
+- use multiprocessing to create population pools. Add ability to cross pollinate, the best lives from each pool get introduced to the other pools every XX generation
+
+- create a flask app that manages X number of virtual machines all running X number of pools. Add ability to cross pollinate over different physical machines.
