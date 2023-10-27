@@ -87,7 +87,7 @@ class Population:
         if self.selection_method == "t_s":
             self.survivors = self.tournament_selection()
         elif self.selection_method == "r_s":
-            pass
+            self.survivors = self.rank_selection()
         else:
             pass
             # self.survivors = self.selection_func(self.lives)
@@ -133,7 +133,7 @@ class Population:
 
     def tournament_selection(self):
         """
-        Perform Darwinian selection to choose survivors from the initial population.
+        Perform tournament selection to choose survivors from the initial population.
 
         Args:
         - population: List of Life objects representing the current population.
@@ -141,7 +141,6 @@ class Population:
         Returns:
         - survivors: List of selected Life objects.
         """
-        # Tournament selection
         tournament_size = 5
         survivor_rate = 0.5
         population_size = len(self.lives)
@@ -172,7 +171,31 @@ class Population:
         return survivors
 
     def rank_selection(self):
-        pass
+        """
+        Perform rank selection to choose survivors from the initial population.
+
+        Args:
+        - population: List of Life objects representing the current population.
+
+        Returns:
+        - survivors: List of selected Life objects.
+        """
+        survivors = []
+        no_of_lives = len(self.lives)
+        if self.maximise_fitness_proxy:
+            self.lives = sorted(self.lives, key=lambda x: x.fitness_proxy, reverse=True)
+        else:
+            self.lives = sorted(
+                self.lives, key=lambda x: x.fitness_proxy, reverse=False
+            )
+        fitness = 1
+        for life in self.lives:
+            danger = random.random()
+            if fitness > danger:
+                survivors.append(life)
+            fitness -= 1 / no_of_lives
+
+        return survivors
 
     def roulette_wheel_selection(self):
         pass

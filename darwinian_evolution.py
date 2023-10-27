@@ -72,9 +72,14 @@ class Darwinian_evolution:
         self.city_locations = gene
 
     def save_best_life(self):
+        """
+        This function stores the overall best life from the genetic algorithm. It adds it into the next generation to ensure that info on the best life is not lost.
+        """
         current_gen_fittest_life = self.population.get_fittest()
+        # On first run through
         if self.fittest_life is None:
             self.fittest_life = current_gen_fittest_life
+        # All other run throughs
         else:
             overall_fittest_proxy = self.fittest_life.fitness_proxy
             current_gen_fittest_proxy = current_gen_fittest_life.fitness_proxy
@@ -123,6 +128,7 @@ class Darwinian_evolution:
             print(f"--- Generation {generation_no} ---")
             # Natural selection
             self.population.survivors = self.population.selection()
+            print(len(self.population.survivors))
             # Procreation
             self.population.children = self.population.procreation()
             # Mutation

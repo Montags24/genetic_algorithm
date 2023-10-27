@@ -11,7 +11,8 @@ MAX_GENERATIONS = 501
 MUTATION_RATE = 0.085
 MAXIMISE_FITNESS_PROXY = False
 ELITISM = True
-SELECTION_METHOD = "t_s"
+# 't_s' tournament selection, 'r_s' rank selection
+SELECTION_METHOD = "r_s"
 SURVIVOR_RATE = 0.5  # 350 survivors
 CHILD_PROCREATION_RATE = 1  # Based on number of survivors
 
