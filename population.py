@@ -1,9 +1,6 @@
 from life import Life
 import random
 import math
-import time
-import multiprocessing
-from functools import partial
 
 
 class Population:
@@ -59,6 +56,10 @@ class Population:
         self.procreation_func = ga_procreation
         self.child_procreation_rate = child_procreation_rate
         self.selection_method = selection_method
+
+        self.generate_random_life = ga_generate_random_life
+        self.calculate_fitness_proxy = ga_calculate_fitness_proxy
+        self.mutation = ga_mutation
         # Store the boolean for maximise_fitness_proxy
         self.maximise_fitness_proxy = maximise_fitness_proxy
 
@@ -83,6 +84,28 @@ class Population:
         self.fittest = self.lives[0]
         return self.fittest
 
+    def get_best_lives(self, no_of_lives):
+        if self.maximise_fitness_proxy:
+            self.lives = sorted(self.lives, key=lambda x: x.fitness_proxy, reverse=True)
+        else:
+            self.lives = sorted(
+                self.lives, key=lambda x: x.fitness_proxy, reverse=False
+            )
+
+        return self.lives[:no_of_lives]
+
+    def reintroduce_best_lives(self, best_lives):
+        for life in best_lives:
+            new_life = Life(
+                gene=life["gene"],
+                ga_generate_random_life=self.generate_random_life,
+                ga_calculate_fitness_proxy=self.calculate_fitness_proxy,
+                ga_mutation=self.mutation,
+            )
+            new_life.fitness_proxy = life["fitness_proxy"]
+            self.lives.append(new_life)
+        return
+
     def selection(self):
         if self.selection_method == "t_s":
             self.survivors = self.tournament_selection()
@@ -101,35 +124,6 @@ class Population:
             parent_2 = random.choice(self.survivors)
             self.children.append(self.procreation_func(parent_1, parent_2))
         return self.children
-
-    # # Function to generate a single child
-    # def generate_single_child(self, _):
-    #     parent_1 = random.choice(self.survivors)
-    #     parent_2 = random.choice(self.survivors)
-    #     return self.procreation_func(parent_1, parent_2)
-
-    # def procreation(self):
-    #     self.children = []
-    #     no_of_children = len(self.survivors) * self.child_procreation_rate
-
-    #     # Number of parallel processes to run
-    #     num_processes = multiprocessing.cpu_count()
-
-    #     # Create a pool of worker processes
-    #     pool = multiprocessing.Pool(processes=num_processes)
-
-    #     # Use the pool to generate children in parallel
-    #     generate_single_child_partial = partial(self.generate_single_child)
-    #     children = pool.map(generate_single_child_partial, range(no_of_children))
-
-    #     # Close the pool
-    #     pool.close()
-    #     pool.join()
-
-    #     # Add the children to the list
-    #     self.children.extend(children)
-
-    #     return self.children
 
     def tournament_selection(self):
         """

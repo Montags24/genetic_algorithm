@@ -4,6 +4,8 @@ import imageio
 import numpy as np
 from population import Population
 import time
+import multiprocessing
+import json
 
 
 class Darwinian_evolution:
@@ -119,10 +121,59 @@ class Darwinian_evolution:
             except FileNotFoundError:
                 pass
 
-    def GA_loop(self):
+    def run_ga_in_parallel(self, num_processes):
+        pool = multiprocessing.Pool(processes=num_processes)
+
+        for _ in range(num_processes):
+            process = pool.apply_async(
+                self.run_genetic_algorithm,
+            )  # pass a random token, append to file name, library secrets
+
+        pool.close()
+        pool.join()
+
+    def share_best_lives(self, best_lives, generation_no):
+        shared_file_name = f"shared_best_lives_generation_{generation_no}.json"
+
+        # Create a list of dictionaries from the best lives
+        best_lives_data = [life.to_dict() for life in best_lives]
+
+        # Write best lives to a JSON file
+        with open(shared_file_name, "w") as file:
+            json.dump(best_lives_data, file)
+
+    def accumulate_shared_best_lives(self, generation_no):
+        shared_best_lives = []
+
+        shared_file_name = f"shared_best_lives_generation_{generation_no}.json"
+
+        if os.path.exists(shared_file_name):
+            # Read best lives from the JSON file
+            with open(shared_file_name, "r") as file:
+                best_lives = json.load(file)
+                shared_best_lives.extend(best_lives)
+
+        return shared_best_lives
+
+    # def share_best_lives(self, best_lives):
+    #     shared_queue = multiprocessing.Queue()
+
+    #     # Share top routes among processes
+    #     for life in best_lives:
+    #         shared_queue.put(life)
+
+    #     # Retrieve the shared top routes
+    #     shared_best_lives = []
+    #     while not shared_queue.empty():
+    #         shared_best_lives.append(shared_queue.get())
+
+    #     return shared_best_lives
+
+    def run_genetic_algorithm(self):
         # Effect of human injection
         # self.human_injection()
 
+        best_lives = []
         generation_best_route_images = []
         for generation_no in range(self.max_generations):
             print(f"--- Generation {generation_no} ---")
@@ -148,10 +199,21 @@ class Darwinian_evolution:
             if generation_no % 10 == 0:
                 generation_best_route_images.append(self.generate_image(generation_no))
 
-        self.create_gif(generation_best_route_images)
+            if generation_no % 10 == 0:
+                best_lives = self.population.get_best_lives(10)
 
-    def multi_processing(self, thread_count):
-        pass
+                # Share best lives among processes
+                # shared_best_lives = self.share_best_lives(best_lives)
+
+                # Write to json
+                self.share_best_lives(best_lives, generation_no)
+
+                shared_best_lives = self.accumulate_shared_best_lives(generation_no)
+
+                # Reintroduce the shared top routes into the population
+                self.population.reintroduce_best_lives(shared_best_lives)
+
+        self.create_gif(generation_best_route_images)
 
     def human_injection(self):
         """

@@ -43,3 +43,6 @@ class Life:
     def mutation(self):
         self.gene = self.calculate_mutation(self.gene)
         self.calculate_fitness_proxy()
+
+    def to_dict(self):
+        return {"gene": self.gene, "fitness_proxy": self.fitness_proxy}

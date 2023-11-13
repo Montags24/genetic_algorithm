@@ -1,45 +1,46 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pool
 import time
+import json
+import os
 
 
-def parrotSpeak(id, q):
-    msg = q.get()
-    while msg != "DONE":
-        print("Parrot {} says: *squawk* *whistle* {} *squawk*".format(id, msg))
-        time.sleep(0.1)
-        msg = q.get()
+def share_best_lives(best_lives, generation_no):
+    shared_file_name = f"shared_best_lives_generation_{generation_no}.json"
+
+    # Write best lives to a JSON file
+    with open(shared_file_name, "w") as file:
+        json.dump(best_lives, file)
+
+
+def accumulate_shared_best_lives(generations):
+    shared_best_lives = []
+
+    for generation_no in range(0, generations, 10):
+        shared_file_name = f"shared_best_lives_generation_{generation_no}.json"
+
+        if os.path.exists(shared_file_name):
+            # Read best lives from the JSON file
+            with open(shared_file_name, "r") as file:
+                best_lives = json.load(file)
+                shared_best_lives.extend(best_lives)
+
+
+def run_ga_in_parallel(num_processes):
+    pool = Pool(processes=num_processes)
+
+    for _ in range(num_processes):
+        process = pool.apply_async(
+            main(),
+        )
+
+    pool.close()
+    pool.join()
 
 
 def main():
-    print("START")
-    numProcesses = 2
-    q = Queue()
-    messages = [
-        "Time for a cracker!",
-        "I need a vacation.",
-        "This perch is comfy!",
-        "Time for dinner!",
-        "What'd you say?",
-        "Where did you go today?",
-        "Did you bring me any treats?",
-        "I wonder what the other birds are doing right now.",
-        "DONE",
-        "DONE",
-    ]
+    for generation in range(100):
 
-    p1 = Process(target=parrotSpeak, args=(1, q))
-    p2 = Process(target=parrotSpeak, args=(2, q))
-    p1.start()
-    p2.start()
-
-    print(
-        "Main process will now sleep, to show that the child processes block on q.get()..."
-    )
-    time.sleep(3)
-    print("Main process is done sleeping. Ready to put messages on the queue!")
-    for i in range(len(messages)):
-        q.put(messages[i])
 
 
 if __name__ == "__main__":
-    main()
+    run_ga_in_parallel(4)
