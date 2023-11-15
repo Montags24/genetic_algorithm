@@ -41,6 +41,5 @@ def main():
     for generation in range(100):
 
 
-
 if __name__ == "__main__":
     run_ga_in_parallel(4)
