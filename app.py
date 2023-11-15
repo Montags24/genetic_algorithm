@@ -6,19 +6,17 @@ from spawn_app import Spawn_App
 spawned_processes = {}
 
 
-def start_genetic_algorithm(ip, port):
-    # Logic to start genetic algorithm on the specified IP and port
+def start_orchestrator(ip, port):
+    # Logic to start flask app
     app = Flask(__name__)
-    print(f"In run app on IP: {ip} and port: {port}")
+    print(f"Running orchestrator flask app on IP: {ip} and port: {port}")
 
-    # Your genetic algorithm logic here
+    # Orchestrator homepage
     @app.route("/")
     def main():
         return "Started successfully!!!!!!!"
 
-    app.run(
-        debug=False, host=ip, port=port
-    )  # Use different ports for different instances
+    app.run(debug=False, host=ip, port=port)
 
 
 def stop_genetic_algorithm(ip, port):
@@ -36,7 +34,7 @@ def spawn_process(i):
 if __name__ == "__main__":
     # Start the Flask app in a separate process
     flask_process = multiprocessing.Process(
-        target=start_genetic_algorithm, args=("127.0.0.1", 5001)
+        target=start_orchestrator, args=("127.0.0.1", 5001)
     )
     flask_process.start()
 

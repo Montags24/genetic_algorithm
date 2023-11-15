@@ -3,6 +3,9 @@ import os
 import imageio
 import numpy as np
 from population import Population
+import requests
+import time
+import json
 
 
 class Darwinian_evolution:
@@ -34,6 +37,8 @@ class Darwinian_evolution:
         elitism,
         child_procreation_rate,
         selection_method,
+        ip,
+        port,
     ):
         """
         Initialize a Darwinian_evolution instance.
@@ -70,6 +75,9 @@ class Darwinian_evolution:
 
         self.city_locations = gene
 
+        self.ip = ip
+        self.port = port
+
     def save_best_life(self):
         """
         This function stores the overall best life from the genetic algorithm. It adds it into the next generation to ensure that info on the best life is not lost.
@@ -80,6 +88,10 @@ class Darwinian_evolution:
             self.fittest_life = current_gen_fittest_life
         # All other run throughs
         else:
+            print(
+                f"Current gen fitness proxy: {current_gen_fittest_life.fitness_proxy}"
+            )
+            print(f"Overall fitness proxy: {self.fittest_life.fitness_proxy}")
             overall_fittest_proxy = self.fittest_life.fitness_proxy
             current_gen_fittest_proxy = current_gen_fittest_life.fitness_proxy
             if self.maximise_fitness_proxy:
@@ -119,6 +131,8 @@ class Darwinian_evolution:
                 pass
 
     def run_genetic_algorithm(self):
+        print("Running genetic algorithm....")
+        time.sleep(20)
         # Effect of human injection
         # self.human_injection()
 
@@ -127,10 +141,10 @@ class Darwinian_evolution:
         # for generation_no in range(self.max_generations):
         generation_no = 0
         while True:
-            print(f"--- Generation {generation_no} ---")
+            # print(f"--- Generation {generation_no} ---")
             # Natural selection
             self.population.survivors = self.population.selection()
-            print(len(self.population.survivors))
+            # print(len(self.population.survivors))
             # Procreation
             self.population.children = self.population.procreation()
             # Mutation
@@ -143,9 +157,17 @@ class Darwinian_evolution:
             # Save best life of generation if elitism set to True
             if self.elitism:
                 self.save_best_life()
-                print(f"Best proxy: {self.fittest_life.fitness_proxy}")
+                print(f"Best life so far:{self.fittest_life.fitness_proxy}")
+                if generation_no % 5 == 0:
+                    payload = {"best_life": self.fittest_life.fitness_proxy}
+                    r = requests.post(
+                        url=f"http://{self.ip}:{self.port}/send_best_life", json=payload
+                    )
+                    # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
             else:
-                print(f"Best proxy: {self.population.get_fittest().fitness_proxy}")
+                # print(f"Best proxy: {self.population.get_fittest().fitness_proxy}")
+                print("I have passed....")
+                pass
 
             generation_no += 1
 

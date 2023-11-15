@@ -142,22 +142,22 @@ def ga_generate_random_life(gene: list) -> list:
     return cities
 
 
-if __name__ == "__main__":
-    np.random.seed(seed=0)
+# if __name__ == "__main__":
+#     np.random.seed(seed=0)
 
-    darwinian_evolution = Darwinian_evolution(
-        gene=cities,
-        ga_calculate_fitness_proxy=ga_calculate_fitness_proxy,
-        ga_generate_random_life=ga_generate_random_life,
-        ga_procreation=ga_procreation,
-        ga_mutation=ga_mutation,
-        no_of_lives=NO_OF_LIVES,
-        maximise_fitness_proxy=MAXIMISE_FITNESS_PROXY,
-        max_generations=MAX_GENERATIONS,
-        elitism=ELITISM,
-        child_procreation_rate=CHILD_PROCREATION_RATE,
-        selection_method=SELECTION_METHOD,
-    )
-    darwinian_evolution.run_genetic_algorithm()
+#     darwinian_evolution = Darwinian_evolution(
+#         gene=cities,
+#         ga_calculate_fitness_proxy=ga_calculate_fitness_proxy,
+#         ga_generate_random_life=ga_generate_random_life,
+#         ga_procreation=ga_procreation,
+#         ga_mutation=ga_mutation,
+#         no_of_lives=NO_OF_LIVES,
+#         maximise_fitness_proxy=MAXIMISE_FITNESS_PROXY,
+#         max_generations=MAX_GENERATIONS,
+#         elitism=ELITISM,
+#         child_procreation_rate=CHILD_PROCREATION_RATE,
+#         selection_method=SELECTION_METHOD,
+#     )
+#     darwinian_evolution.run_genetic_algorithm()
 
-    1 / 0  # Used to halt the execution for testing purposes
+#     1 / 0  # Used to halt the execution for testing purposes
