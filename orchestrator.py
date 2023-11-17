@@ -30,6 +30,6 @@ if __name__ == "__main__":
     total_no_of_threads = os.cpu_count()
 
     # Start the Spawn_App instance in the main process
-    for i in range(2, total_no_of_threads - 1):
+    for i in range(2, 3):
         spawned_flask_process = multiprocessing.Process(target=spawn_process, args=(i,))
         spawned_flask_process.start()

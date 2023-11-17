@@ -128,7 +128,7 @@ class Darwinian_evolution:
 
     def run_genetic_algorithm(self):
         print(f"Running genetic algorithm on {self.ip_address}:{self.port}")
-        time.sleep(20)
+        time.sleep(10)
         # Effect of human injection
         # self.human_injection()
 
@@ -145,7 +145,7 @@ class Darwinian_evolution:
             self.population.children = self.population.procreation()
             # Mutation
             for life in self.population.children:
-                life = life.mutation()
+                life.mutate_life()
             # Update population
             self.population.lives = self.population.survivors + self.population.children
             # Get fittest life of current population
@@ -153,21 +153,22 @@ class Darwinian_evolution:
             # Save best life of generation if elitism set to True
             if self.elitism:
                 self.save_best_life()
-                if generation_no % 5 == 0:
-                    payload = {
-                        "best_gene": self.fittest_life.gene,
-                        "best_fitness_proxy": self.fittest_life.fitness_proxy,
-                        "generation_no": generation_no,
-                    }
-                    r = requests.post(
-                        url=f"http://{self.ip_address}:{self.port}/send_best_life",
-                        json=payload,
-                    )
-                    # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
             else:
                 # print(f"Best proxy: {self.population.get_fittest().fitness_proxy}")
                 print("I have passed....")
                 pass
+
+            if generation_no % 5 == 0:
+                payload = {
+                    "best_gene": self.fittest_life.gene,
+                    "best_fitness_proxy": self.fittest_life.fitness_proxy,
+                    "generation_no": generation_no,
+                }
+                r = requests.post(
+                    url=f"http://{self.ip_address}:{self.port}/send_best_life",
+                    json=payload,
+                )
+                # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
 
             generation_no += 1
 

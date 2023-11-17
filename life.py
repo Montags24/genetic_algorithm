@@ -40,7 +40,7 @@ class Life:
     def calculate_fitness_proxy(self):
         self.fitness_proxy = self.calculate_fitness_proxy_func(self.gene)
 
-    def mutation(self):
+    def mutate_life(self):
         self.gene = self.calculate_mutation(self.gene)
         self.calculate_fitness_proxy()
 
