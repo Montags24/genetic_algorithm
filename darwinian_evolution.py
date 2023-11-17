@@ -75,7 +75,7 @@ class Darwinian_evolution:
 
         self.city_locations = gene
 
-        self.ip = ip
+        self.ip_address = ip
         self.port = port
 
     def save_best_life(self):
@@ -88,10 +88,6 @@ class Darwinian_evolution:
             self.fittest_life = current_gen_fittest_life
         # All other run throughs
         else:
-            print(
-                f"Current gen fitness proxy: {current_gen_fittest_life.fitness_proxy}"
-            )
-            print(f"Overall fitness proxy: {self.fittest_life.fitness_proxy}")
             overall_fittest_proxy = self.fittest_life.fitness_proxy
             current_gen_fittest_proxy = current_gen_fittest_life.fitness_proxy
             if self.maximise_fitness_proxy:
@@ -131,7 +127,7 @@ class Darwinian_evolution:
                 pass
 
     def run_genetic_algorithm(self):
-        print("Running genetic algorithm....")
+        print(f"Running genetic algorithm on {self.ip_address}:{self.port}")
         time.sleep(20)
         # Effect of human injection
         # self.human_injection()
@@ -157,11 +153,15 @@ class Darwinian_evolution:
             # Save best life of generation if elitism set to True
             if self.elitism:
                 self.save_best_life()
-                print(f"Best life so far:{self.fittest_life.fitness_proxy}")
                 if generation_no % 5 == 0:
-                    payload = {"best_life": self.fittest_life.fitness_proxy}
+                    payload = {
+                        "best_gene": self.fittest_life.gene,
+                        "best_fitness_proxy": self.fittest_life.fitness_proxy,
+                        "generation_no": generation_no,
+                    }
                     r = requests.post(
-                        url=f"http://{self.ip}:{self.port}/send_best_life", json=payload
+                        url=f"http://{self.ip_address}:{self.port}/send_best_life",
+                        json=payload,
                     )
                     # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
             else:

@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request
 import threading
 import time
-from queue import Queue
 from config import Config
 from genetic_algorithm_poc import (
     ga_calculate_fitness_proxy,
@@ -12,12 +11,14 @@ from genetic_algorithm_poc import (
 from darwinian_evolution import Darwinian_evolution
 
 
-class Spawn_App:
+class SpawnApp:
     def __init__(self, ip, port):
-        self.ip = ip
+        self.ip_address = ip
         self.port = port
         self.app = Flask(__name__)
-        self.best_life = None
+        self.best_gene = None
+        self.best_fitness_proxy = None
+        self.generation_no = None
         self.is_running = False
         self.genetic_algorithm_thread = None
         self.darwinian_evolution_thread = None
@@ -37,7 +38,7 @@ class Spawn_App:
             elitism=config.elitism,
             child_procreation_rate=config.child_procreation_rate,
             selection_method=config.selection_method,
-            ip=self.ip,
+            ip=self.ip_address,
             port=self.port,
         )
 
@@ -59,27 +60,30 @@ class Spawn_App:
             self.genetic_algorithm_thread.join()
 
     def run_app(self):
-        print(f"running app on IP: {self.ip} and port: {self.port}...")
+        print(f"running app on IP address: {self.ip_address} and port: {self.port}...")
 
         @self.app.route("/")
         def main():
-            return f"Sub process running on IP: {self.ip} and port: {self.port}"
+            return f"Sub process running on IP: {self.ip_address} and port: {self.port}"
 
         @self.app.route("/get_best_life", methods=["GET"])
-        def return_best_life():
+        def return_best_gene():
             print("Handling /get_best_life request...")
-            # Get the fittest life from the queue
-            best_life = self.best_life
-            print("Got best life:", best_life)
-            return jsonify({"best_life": best_life})
+            msg = {
+                "best_gene": self.best_gene,
+                "best_fitness_proxy": self.best_fitness_proxy,
+                "generation_no": self.generation_no,
+            }
+            return jsonify(msg)
 
         @self.app.route("/send_best_life", methods=["POST"])
-        def send_best_life():
+        def send_best_gene():
             if request.method == "POST":
                 data = request.json
-                print(data)
-                self.best_life = data["best_life"]
-                print(f"IP:{self.ip}\nBest life:{self.best_life}")
+                self.best_gene = data["best_gene"]
+                self.best_fitness_proxy = data["best_fitness_proxy"]
+                self.generation_no = data["generation_no"]
+                print(f"Received data from IP address:{self.ip_address}:{self.port}")
                 response_data = {"message": "Received best life successfully"}
                 return jsonify(response_data)
 
@@ -87,9 +91,7 @@ class Spawn_App:
         self.start_genetic_algorithm()
 
         # Start the Flask app
-        self.app.run(
-            debug=False, host=self.ip, port=self.port
-        )  # Use different ports for different instances
+        self.app.run(debug=False, host=self.ip_address, port=self.port)
 
 
 # Uncomment the following lines to run the application
