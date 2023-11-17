@@ -1,8 +1,13 @@
+# Created by https://www.toptal.com/developers/gitignore/api/venv,flask,python,dotenv
+# Edit at https://www.toptal.com/developers/gitignore?templates=venv,flask,python,dotenv
+
+### dotenv ###
+.env
+
 ### Flask ###
 instance/*
 !instance/.gitignore
 .webassets-cache
-.env
 
 ### Flask.Python Stack ###
 # Byte-compiled / optimized / DLL files
@@ -256,4 +261,16 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
-# End of https://www.toptal.com/developers/gitignore/api/python,flask
+### venv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+pip-selfcheck.json
+
+# End of https://www.toptal.com/developers/gitignore/api/venv,flask,python,dotenv
