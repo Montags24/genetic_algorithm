@@ -6,6 +6,9 @@ from population import Population
 import requests
 import time
 import json
+import random
+from config import Config
+from life import Life
 
 
 class Darwinian_evolution:
@@ -69,7 +72,10 @@ class Darwinian_evolution:
         )
 
         self.fittest_life = None
+        self.calculate_fitness_proxy = ga_calculate_fitness_proxy
         self.maximise_fitness_proxy = maximise_fitness_proxy
+        self.generate_random_life = ga_generate_random_life
+        self.mutate_life = ga_mutation
         self.max_generations = max_generations
         self.elitism = elitism
 
@@ -77,6 +83,7 @@ class Darwinian_evolution:
 
         self.ip_address = ip
         self.port = port
+        self.config = Config()
 
     def save_best_life(self):
         """
@@ -126,6 +133,48 @@ class Darwinian_evolution:
             except FileNotFoundError:
                 pass
 
+    def send_best_life_via_post(self, generation_no):
+        payload = {
+            "best_gene": self.fittest_life.gene,
+            "best_fitness_proxy": self.fittest_life.fitness_proxy,
+            "generation_no": generation_no,
+        }
+        r = requests.post(
+            url=f"http://{self.ip_address}:{self.port}/send_best_life",
+            json=payload,
+        )
+
+    def reintroduce_life_into_population(self, gene):
+        life = Life(
+            gene=gene,
+            ga_calculate_fitness_proxy=self.calculate_fitness_proxy,
+            ga_generate_random_life=self.generate_random_life,
+            ga_mutation=self.mutate_life,
+        )
+        # As Life class on initialisation generates a random gene, we have to reassign it again and calculate fitness proxy
+        life.gene = gene
+        life.calculate_fitness_proxy()
+        # Introduce life into population
+        self.population.lives.append(life)
+
+    def request_best_gene_from_ip_and_port(self):
+        randomly_chosen_ip_and_port = random.choice(self.config.host_addresses)
+        while randomly_chosen_ip_and_port["ip"] == self.ip_address:
+            randomly_chosen_ip_and_port = random.choice(self.config.host_addresses)
+        ip = randomly_chosen_ip_and_port["ip"]
+        port = randomly_chosen_ip_and_port["port"]
+        url = f"http://{ip}:{port}/get_best_life"
+        response = requests.get(url)
+        print(f"Own IP: {self.ip_address}. Requesting from {ip}")
+
+        if response.status_code == 200:
+            data = response.json()
+            gene = data["best_gene"]
+            return gene
+        else:
+            print(f"Error: {response.status_code}")
+            print(response.text)
+
     def run_genetic_algorithm(self):
         print(f"Running genetic algorithm on {self.ip_address}:{self.port}")
         time.sleep(10)
@@ -137,10 +186,8 @@ class Darwinian_evolution:
         # for generation_no in range(self.max_generations):
         generation_no = 0
         while True:
-            # print(f"--- Generation {generation_no} ---")
             # Natural selection
             self.population.survivors = self.population.selection()
-            # print(len(self.population.survivors))
             # Procreation
             self.population.children = self.population.procreation()
             # Mutation
@@ -150,25 +197,17 @@ class Darwinian_evolution:
             self.population.lives = self.population.survivors + self.population.children
             # Get fittest life of current population
             self.population.get_fittest()
-            # Save best life of generation if elitism set to True
             if self.elitism:
                 self.save_best_life()
-            else:
-                # print(f"Best proxy: {self.population.get_fittest().fitness_proxy}")
-                print("I have passed....")
-                pass
-
             if generation_no % 5 == 0:
-                payload = {
-                    "best_gene": self.fittest_life.gene,
-                    "best_fitness_proxy": self.fittest_life.fitness_proxy,
-                    "generation_no": generation_no,
-                }
-                r = requests.post(
-                    url=f"http://{self.ip_address}:{self.port}/send_best_life",
-                    json=payload,
-                )
-                # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
+                self.send_best_life_via_post(generation_no)
+
+            # print(f"Best proxy: {self.fittest_life.fitness_proxy}")
+
+            # Logic to request best lives of other flask spawns and add to
+            if random.random() < 0.1:
+                gene = self.request_best_gene_from_ip_and_port()
+                self.reintroduce_life_into_population(gene)
 
             generation_no += 1
 
