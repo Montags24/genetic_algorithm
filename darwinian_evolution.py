@@ -79,6 +79,7 @@ class Darwinian_evolution:
         self.max_generations = max_generations
         self.elitism = elitism
 
+        # Used specifically to draw map for the TSP
         self.city_locations = gene
 
         self.ip_address = ip
@@ -109,29 +110,6 @@ class Darwinian_evolution:
                     self.population.lives.append(self.fittest_life)
 
         return
-
-    def generate_image(self, generation_no):
-        # Generate an image every 10 generations
-        img_shortest_route = create_cities_img(
-            self.fittest_life, human_injection=False, generation_no=generation_no
-        )
-        cv2.imwrite(f"generation_{generation_no}.png", img_shortest_route)
-        return img_shortest_route
-
-    def create_gif(self, generation_best_route_images):
-        # Create a GIF from the list of images
-        file_name = str(self.fittest_life.fitness_proxy).replace(".", "-")
-        imageio.mimsave(
-            f"{file_name}.gif", generation_best_route_images, duration=0.5
-        )  # Adjust the duration as needed
-
-        # Delete all the images apart from the GIF
-        for generation in range(self.max_generations):
-            try:
-                image_filename = f"generation_{generation}.png"
-                os.remove(image_filename)
-            except FileNotFoundError:
-                pass
 
     def send_best_life_via_post(self, generation_no):
         payload = {
@@ -175,9 +153,24 @@ class Darwinian_evolution:
             print(f"Error: {response.status_code}")
             print(response.text)
 
+    def perform_generation_operations(self):
+        # Natural selection
+        self.population.survivors = self.population.selection()
+        # Procreation
+        self.population.children = self.population.procreation()
+        # Mutation
+        for life in self.population.children:
+            life.mutate_life()
+        # Update population
+        self.population.lives = self.population.survivors + self.population.children
+        # Get fittest life of current population
+        self.population.get_fittest()
+        if self.elitism:
+            self.save_best_life()
+
     def run_genetic_algorithm(self):
         print(f"Running genetic algorithm on {self.ip_address}:{self.port}")
-        time.sleep(10)
+        time.sleep(15)
         # Effect of human injection
         # self.human_injection()
 
@@ -186,19 +179,8 @@ class Darwinian_evolution:
         # for generation_no in range(self.max_generations):
         generation_no = 0
         while True:
-            # Natural selection
-            self.population.survivors = self.population.selection()
-            # Procreation
-            self.population.children = self.population.procreation()
-            # Mutation
-            for life in self.population.children:
-                life.mutate_life()
-            # Update population
-            self.population.lives = self.population.survivors + self.population.children
-            # Get fittest life of current population
-            self.population.get_fittest()
-            if self.elitism:
-                self.save_best_life()
+            self.perform_generation_operations()
+
             if generation_no % 5 == 0:
                 self.send_best_life_via_post(generation_no)
 
@@ -218,6 +200,32 @@ class Darwinian_evolution:
 
     def get_best_lives(self, no_of_lives):
         return self.population.get_best_lives(no_of_lives)
+
+    # ------------------------------------------------------------------------------------------------------
+    # ------------- Code to solve TSP. Create images, effect of human interaction etc. ---------------------
+    # ------------------------------------------------------------------------------------------------------
+    def generate_image(self, generation_no):
+        # Generate an image every 10 generations
+        img_shortest_route = create_cities_img(
+            self.fittest_life, human_injection=False, generation_no=generation_no
+        )
+        cv2.imwrite(f"generation_{generation_no}.png", img_shortest_route)
+        return img_shortest_route
+
+    def create_gif(self, generation_best_route_images):
+        # Create a GIF from the list of images
+        file_name = str(self.fittest_life.fitness_proxy).replace(".", "-")
+        imageio.mimsave(
+            f"{file_name}.gif", generation_best_route_images, duration=0.5
+        )  # Adjust the duration as needed
+
+        # Delete all the images apart from the GIF
+        for generation in range(self.max_generations):
+            try:
+                image_filename = f"generation_{generation}.png"
+                os.remove(image_filename)
+            except FileNotFoundError:
+                pass
 
     def human_injection(self):
         """

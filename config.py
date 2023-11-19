@@ -23,7 +23,8 @@ class Config:
         for _ in range(self.no_of_cities):
             self.cities.append(dict(x=np.random.rand(), y=np.random.rand()))
 
-        # Define IP addresses and Port Numbers
+        self.orchestrator_address = {"ip": "127.0.0.1", "port": 5001}
+        # Define IP addresses and port numbers to be used
         self.host_addresses = []
         for i in range(2, 10):
             self.host_addresses.append({"ip": f"127.0.0.{i}", "port": 5000 + i})

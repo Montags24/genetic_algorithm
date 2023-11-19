@@ -1,2 +1,16 @@
 - darwinian_evolution
-    - randomly request best life off other ip address and include in population
+    - randomly request best life off other ip address and include in population - complete
+
+- allow user to specify number of lives that are sent
+- allow user to specify the frequency at which processes request other processes for best lives
+
+- compare and contrast
+    - no transfer of lives
+    - low transfer
+    - high transfer
+
+- UI
+    - update dashboard UI
+    - show best life
+
+- test setup

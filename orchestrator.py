@@ -7,6 +7,9 @@ import requests
 import json
 
 
+config = Config()
+
+
 def start_orchestrator(ip, port):
     app = Flask(__name__)
     print(f"Running orchestrator flask app on IP address: {ip} and port: {port}")
@@ -17,7 +20,6 @@ def start_orchestrator(ip, port):
 
     @app.route("/dashboard")
     def dashboard():
-        config = Config()
         host_addresses = config.host_addresses
         msg = {
             "best life": {},
@@ -37,6 +39,7 @@ def start_orchestrator(ip, port):
                     "Fitness proxy": fitness_proxy,
                 }
                 if fitness_proxy < best_fitness_proxy:
+                    best_fitness_proxy = fitness_proxy
                     msg["best life"]["Host"] = f"Host_{i}"
                     msg["best life"]["Fitness proxy"] = f"{fitness_proxy}"
 
@@ -45,21 +48,22 @@ def start_orchestrator(ip, port):
     app.run(debug=False, host=ip, port=port)
 
 
-def spawn_process(i):
-    spawn_instance = SpawnApp(ip=f"127.0.0.{i}", port=5000 + i)
+def spawn_process(ip, port):
+    spawn_instance = SpawnApp(ip=ip, port=port)
     spawn_instance.run_app()
 
 
 if __name__ == "__main__":
     # Start the Flask app in a separate process
     main_flask_process = multiprocessing.Process(
-        target=start_orchestrator, args=("127.0.0.1", 5001)
+        target=start_orchestrator,
+        args=(config.orchestrator_address["ip"], config.orchestrator_address["port"]),
     )
     main_flask_process.start()
 
-    total_no_of_threads = os.cpu_count()
-
     # Start the Spawn_App instance in the main process
-    for i in range(2, 10):
-        spawned_flask_process = multiprocessing.Process(target=spawn_process, args=(i,))
+    for host_address in config.host_addresses:
+        spawned_flask_process = multiprocessing.Process(
+            target=spawn_process, args=(host_address["ip"], host_address["port"])
+        )
         spawned_flask_process.start()
